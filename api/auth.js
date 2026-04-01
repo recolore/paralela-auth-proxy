@@ -1,16 +1,17 @@
 const https = require("https");
 
 export default function handler(req, res) {
+  // A Vercel agora vai usar essa mesma função para /api/auth e para o callback
   const { code } = req.query;
 
-  // Se não tem código, redireciona para o GitHub para iniciar o login
+  // 1. Se não tem código, redireciona para o GitHub (Início do login)
   if (!code) {
     const url = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&scope=repo,user`;
     res.writeHead(302, { Location: url });
     return res.end();
   }
 
-  // Se tem código, troca pelo Token de acesso
+  // 2. Se tem código, o GitHub nos enviou de volta (Callback)
   const data = JSON.stringify({
     client_id: process.env.GITHUB_CLIENT_ID,
     client_secret: process.env.GITHUB_CLIENT_SECRET,
@@ -30,6 +31,8 @@ export default function handler(req, res) {
     post_res.on("data", (chunk) => (body += chunk));
     post_res.on("end", () => {
       const response = JSON.parse(body);
+      
+      // Enviamos o token de volta para o seu site da Paralela Digital
       res.setHeader("Content-Type", "text/html");
       res.end(`
         <script>
