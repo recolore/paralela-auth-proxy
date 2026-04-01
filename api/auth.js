@@ -1,53 +1,46 @@
-const http = require("http");
 const https = require("https");
-const { parse } = require("url");
 
-const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
-const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
+export default function handler(req, res) {
+  const { code } = req.query;
 
-http.createServer((req, res) => {
-  // ADICIONE ESTAS 3 LINHAS ABAIXO PARA LIBERAR O ACESSO
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  const { pathname, query } = parse(req.url, true);
-
-  if (pathname === "/auth") {
-    res.writeHead(302, {
-      Location: `https://github.com/login/oauth/authorize?client_id=${GITHUB_CLIENT_ID}&scope=repo,user`
-    });
-    res.end();
-  } else if (pathname === "/callback") {
-    const code = query.code;
-    const data = JSON.stringify({
-      client_id: GITHUB_CLIENT_ID,
-      client_secret: GITHUB_CLIENT_SECRET,
-      code: code
-    });
-
-    const post_req = https.request({
-      host: "github.com",
-      path: "/login/oauth/access_token",
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      }
-    }, (post_res) => {
-      let body = "";
-      post_res.on("data", (chunk) => body += chunk);
-      post_res.on("end", () => {
-        const token = JSON.parse(body).access_token;
-        res.end(`
-          <script>
-            window.opener.postMessage("authorizing:github:success:${JSON.stringify({token})}", window.location.origin);
-          </script>
-        `);
-      });
-    });
-
-    post_req.write(data);
-    post_req.end();
+  // Se não tem código, redireciona para o GitHub para iniciar o login
+  if (!code) {
+    const url = `https://github.com/login/oauth/authorize?client_id=${process.env.GITHUB_CLIENT_ID}&scope=repo,user`;
+    res.writeHead(302, { Location: url });
+    return res.end();
   }
-}).listen(3000);
+
+  // Se tem código, troca pelo Token de acesso
+  const data = JSON.stringify({
+    client_id: process.env.GITHUB_CLIENT_ID,
+    client_secret: process.env.GITHUB_CLIENT_SECRET,
+    code: code,
+  });
+
+  const post_req = https.request({
+    host: "github.com",
+    path: "/login/oauth/access_token",
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+    },
+  }, (post_res) => {
+    let body = "";
+    post_res.on("data", (chunk) => (body += chunk));
+    post_res.on("end", () => {
+      const response = JSON.parse(body);
+      res.setHeader("Content-Type", "text/html");
+      res.end(`
+        <script>
+          const token = "${response.access_token}";
+          const message = "authorizing:github:success:" + JSON.stringify({token: token, provider: 'github'});
+          window.opener.postMessage(message, window.location.origin);
+        </script>
+      `);
+    });
+  });
+
+  post_req.write(data);
+  post_req.end();
+}
