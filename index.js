@@ -6,6 +6,11 @@ const GITHUB_CLIENT_ID = process.env.GITHUB_CLIENT_ID;
 const GITHUB_CLIENT_SECRET = process.env.GITHUB_CLIENT_SECRET;
 
 http.createServer((req, res) => {
+  // ADICIONE ESTAS 3 LINHAS ABAIXO PARA LIBERAR O ACESSO
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
   const { pathname, query } = parse(req.url, true);
 
   if (pathname === "/auth") {
