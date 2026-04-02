@@ -42,7 +42,7 @@ module.exports = async (req, res) => {
         <script>
           (function() {
             const token = "${tokenData.access_token}";
-            const message = "authorizing:github:success:" + JSON.stringify({
+            const message = "authorization:github:success:" + JSON.stringify({
               token: token,
               provider: "github"
             });
