@@ -74,29 +74,33 @@ module.exports = async (req, res) => {
 
     // 3) Retorno para popup do Decap
     const safeToken = JSON.stringify(String(tokenData.access_token)); // evita quebrar script
-    const content = `
-      <html>
-      <body style="font-family:sans-serif;text-align:center;margin-top:50px;">
-        <script>
-          (function () {
-            var token = ${safeToken};
-            var message = "authorization:github:success:" + JSON.stringify({
-              token: token,
-              provider: "github"
-            });
+  c<script>
+  (function () {
+    var token = "__TOKEN__";
+    var payload = {
+      token: token,
+      provider: "github"
+    };
 
-            if (window.opener) {
-              window.opener.postMessage(message, "*");
-              setTimeout(function () { window.close(); }, 300);
-            } else {
-              document.body.innerHTML = "Erro: Janela principal não encontrada. Feche esta aba e tente novamente.";
-            }
-          })();
-        </script>
-        <p>Autenticado com sucesso! Carregando painel da Paralela Digital...</p>
-      </body>
-      </html>
-    `;
+    function receiveMessage(e) {
+      // envia sucesso para a origem exata que respondeu
+      window.opener.postMessage(
+        "authorization:github:success:" + JSON.stringify(payload),
+        e.origin
+      );
+      setTimeout(function () { window.close(); }, 300);
+    }
+
+    if (window.opener) {
+      window.addEventListener("message", receiveMessage, false);
+      // inicia handshake com Decap
+      window.opener.postMessage("authorizing:github", "*");
+    } else {
+      document.body.innerHTML =
+        "Erro: Janela principal não encontrada. Feche esta aba e tente novamente.";
+    }
+  })();
+</script>
 
     res.setHeader("Content-Type", "text/html; charset=utf-8");
     return res.status(200).send(content);
